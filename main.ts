@@ -1,32 +1,32 @@
-//
-// console.log = function () { };
-
-// 
 import {
 	App,
-	Editor,
-	MarkdownView,
 	Modal,
 	Notice,
 	Plugin,
 	PluginSettingTab,
 	Setting,
-	addIcon,
-} from 'obsidian';
-import { Upload2Notion } from './Upload2Notion';
-import { DownloadFromNotion } from './DownloadFromNotion';
+	TFile,
+} from "obsidian";
+import { Upload2Notion } from "./src/Upload2Notion";
+import { DownloadFromNotion } from "./src/DownloadFromNotion";
 
 interface PluginSettings {
 	notionAPI: string;
-	databaseID: string;
+	importDatabaseID: string;
+	exportDatabaseID: string;
 	proxy: string;
+	importLocation: string;
+	exportLocation: string;
 	allowTags: boolean;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
-	notionAPI: '',
-	databaseID: '',
-	proxy: '',
+	notionAPI: "",
+	importDatabaseID: "",
+	exportDatabaseID: "",
+	proxy: "",
+	importLocation: "/",
+	exportLocation: "/",
 	allowTags: false,
 };
 
@@ -37,13 +37,13 @@ export default class ObsidianSyncNotionPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		this.addRibbonIcon('upload-cloud', 'Upload to Notion', async () => {
+		this.addRibbonIcon("upload-cloud", "Export to Notion", async () => {
 			this.showSyncModal();
 			await this.uploadAllNotes();
 			this.closeSyncModal();
 		});
 
-		this.addRibbonIcon('download-cloud', 'Download from Notion', async () => {
+		this.addRibbonIcon("download-cloud", "Import from Notion", async () => {
 			this.showSyncModal();
 			await this.downloadAllNotes();
 			this.closeSyncModal();
@@ -52,24 +52,36 @@ export default class ObsidianSyncNotionPlugin extends Plugin {
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
 
-	onunload() { }
+	onunload() {}
 
 	async uploadAllNotes() {
-		const { notionAPI, databaseID, allowTags } = this.settings;
-		if (!notionAPI || !databaseID) {
-			new Notice('Please set up the Notion API and Database ID in the settings tab.');
+		const { notionAPI, exportLocation, exportDatabaseID, allowTags } =
+			this.settings;
+		if (!notionAPI || !exportDatabaseID) {
+			new Notice(
+				"Please set up the Notion API and Export Database ID in the settings tab."
+			);
 			return;
 		}
 
 		const upload = new Upload2Notion(this);
-		const files = this.app.vault.getMarkdownFiles();
-		await Promise.all(files.map(file => upload.syncMarkdownToNotion(file, allowTags)));
+		const files = this.app.vault
+			.getFolderByPath(exportLocation)
+			?.children.filter((file) => file instanceof TFile);
+
+		await Promise.all(
+			files?.map((file) =>
+				upload.syncMarkdownToNotion(file, allowTags)
+			) ?? []
+		);
 	}
 
 	async downloadAllNotes() {
-		const { notionAPI, databaseID } = this.settings;
-		if (!notionAPI || !databaseID) {
-			new Notice('Please set up the Notion API and Database ID in the settings tab.');
+		const { notionAPI, importDatabaseID } = this.settings;
+		if (!notionAPI || !importDatabaseID) {
+			new Notice(
+				"Please set up the Notion API and Import Database ID in the settings tab."
+			);
 			return;
 		}
 
@@ -78,7 +90,11 @@ export default class ObsidianSyncNotionPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData()
+		);
 	}
 
 	async saveSettings() {
@@ -87,9 +103,11 @@ export default class ObsidianSyncNotionPlugin extends Plugin {
 
 	showSyncModal() {
 		this.syncModal = new Modal(this.app);
-		this.syncModal.titleEl.setText('Sync in progress');
-		this.syncModal.contentEl.setText('Please wait while the sync is in progress. This dialog will close automatically.');
-		this.syncModal.modalEl.classList.add('sync-modal');
+		this.syncModal.titleEl.setText("Sync in progress");
+		this.syncModal.contentEl.setText(
+			"Please wait while the sync is in progress. This dialog will close automatically."
+		);
+		this.syncModal.modalEl.classList.add("sync-modal");
 		this.syncModal.open();
 	}
 
@@ -115,35 +133,84 @@ class SettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Notion API token')
-			.setDesc('Enter your Notion API token')
-			.addText(text => text
-				.setPlaceholder('Enter your Notion API token')
-				.setValue(this.plugin.settings.notionAPI)
-				.onChange(async (value) => {
-					this.plugin.settings.notionAPI = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName("Notion API token")
+			.setDesc("Enter your Notion API token.")
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter your Notion API token")
+					.setValue(this.plugin.settings.notionAPI)
+					.onChange(async (value) => {
+						this.plugin.settings.notionAPI = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
-			.setName('Database ID')
-			.setDesc('Enter your database ID')
-			.addText(text => text
-				.setPlaceholder('Enter your database ID')
-				.setValue(this.plugin.settings.databaseID)
-				.onChange(async (value) => {
-					this.plugin.settings.databaseID = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName("Import Database ID")
+			.setDesc("Notion database ID to import from.")
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter your database ID")
+					.setValue(this.plugin.settings.importDatabaseID)
+					.onChange(async (value) => {
+						this.plugin.settings.importDatabaseID = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
-			.setName('Convert tags')
-			.setDesc('Transfer the Obsidian tags to the Notion table.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.allowTags)
-				.onChange(async (value) => {
-					this.plugin.settings.allowTags = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName("Export Database ID")
+			.setDesc("Notion database ID to export to.")
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter your database ID")
+					.setValue(this.plugin.settings.exportDatabaseID)
+					.onChange(async (value) => {
+						this.plugin.settings.exportDatabaseID = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Import Location")
+			.setDesc(
+				"Directory where the imported notion pages will be located."
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("/")
+					.setValue(this.plugin.settings.importLocation)
+					.onChange(async (value) => {
+						this.plugin.settings.importLocation = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Export Location")
+			.setDesc(
+				"Directory where the pages will be exported to notion database."
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("/")
+					.setValue(this.plugin.settings.exportLocation)
+					.onChange(async (value) => {
+						this.plugin.settings.exportLocation = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Convert tags")
+			.setDesc("Transfer the Obsidian tags to the Notion table.")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.allowTags)
+					.onChange(async (value) => {
+						this.plugin.settings.allowTags = value;
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 }

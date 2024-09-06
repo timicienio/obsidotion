@@ -1,11 +1,10 @@
 {
-	"id": "obsidotion",
-	"name": "obsidotion",
-	"version": "1.0.3",
+	"id": "obsidotion-2",
+	"name": "Obsidotion 2",
+	"version": "2.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "a simple obsidian plugin that syncs from/to obsidian/notion",
-	"author": "p32929",
-	"authorUrl": "https://p32929.github.io/",
-	"fundingUrl": "https://buymeacoffee.com/p32929",
+	"author": "timicienio",
+	"authorUrl": "https://timicienio.github.io/",
 	"isDesktopOnly": false
 }
