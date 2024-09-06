@@ -5,10 +5,25 @@ A simple obsidian plugin that syncs from/to obsidian/notion. Works on all platfo
 
 1. Clone the repo inside `your_obsidian_vault/.obsidian/plugins`
 2. Go to the folder
-3. Run `npm install` or `yarn`
-4. Run `npm run build` or `yarn build`
+3. Run `yarn`
+4. Run `yarn build`
 5. Open obsidian
-6. Enable the plugin
+6. Reload community plugins
+7. Enable the plugin
+
+# How to use
+
+1. Follow instructions on [https://github.com/EasyChris/obsidian-to-notion] to create Notion plugin, acquire Notion access token, and the ID(s) of your Notion database(s) you wish to import/export notes to/from.
+2. Fill in information in plugin settings page.
+
+# Limitations
+
+- Content on the destination side of import/export sync will be rewritten by source content. Be careful when performing these actions.
+- Nested folder in export folder will not be sync to Notion.
+
+# Acknowledgment
+
+Thanks to [p32929](https://github.com/p32929), the original author of obsidotion, for providing the groundwork for this project.
 
 # License
 ```
