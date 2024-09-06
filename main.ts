@@ -18,6 +18,9 @@ interface PluginSettings {
 	importLocation: string;
 	exportLocation: string;
 	allowTags: boolean;
+
+	lastImportedTime: Date;
+	lastExportedTime: Date;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
@@ -28,6 +31,9 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	importLocation: "/",
 	exportLocation: "/",
 	allowTags: false,
+
+	lastImportedTime: new Date(0),
+	lastExportedTime: new Date(0),
 };
 
 export default class ObsidianSyncNotionPlugin extends Plugin {
@@ -65,14 +71,27 @@ export default class ObsidianSyncNotionPlugin extends Plugin {
 		}
 
 		const upload = new Upload2Notion(this);
+		const lastExportedTime = new Date(this.settings.lastExportedTime);
 		const files = this.app.vault
 			.getFolderByPath(exportLocation)
-			?.children.filter((file) => file instanceof TFile);
+			?.children.filter((file) => file instanceof TFile)
+			.filter((file) => {
+				const lastModifiedTime = new Date(file.stat.mtime);
+
+				return lastModifiedTime > lastExportedTime;
+			});
 
 		await Promise.all(
 			files?.map((file) =>
 				upload.syncMarkdownToNotion(file, allowTags)
 			) ?? []
+		);
+
+		this.settings.lastExportedTime = new Date();
+		await this.saveSettings();
+
+		new Notice(
+			`Notion import completed. ${files?.length ?? 0} files changed.`
 		);
 	}
 

@@ -7,12 +7,13 @@ import {
 } from "obsidian";
 import ObsidianSyncNotionPlugin from "../main";
 
-import { Client } from "@notionhq/client";
+import { Client, isFullPage } from "@notionhq/client";
 import { NotionToMarkdown } from "notion-to-md";
 import {
 	SupportedRequestInfo,
 	SupportedRequestInit,
 } from "@notionhq/client/build/src/fetch-types";
+import { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 
 export class DownloadFromNotion {
 	plugin: ObsidianSyncNotionPlugin;
@@ -47,11 +48,32 @@ export class DownloadFromNotion {
 			database_id: this.plugin.settings.importDatabaseID,
 		});
 
+		const lastImportedTime = new Date(
+			this.plugin.settings.lastImportedTime
+		);
+		const filesToDownload = res.results
+			.filter((page) => isFullPage(page))
+			.filter((page) => {
+				const pageLastEditedTime = new Date(page.last_edited_time);
+				pageLastEditedTime.setMinutes(
+					new Date(page.last_edited_time).getMinutes() + 3 // add buffer
+				);
+
+				return pageLastEditedTime > lastImportedTime;
+			});
+
 		if (res) {
 			await Promise.all(
-				res.results.map((page) => this.downloadPage(page))
+				filesToDownload.map((page) => this.downloadPage(page))
 			);
 		}
+
+		this.plugin.settings.lastImportedTime = new Date();
+		await this.plugin.saveSettings();
+
+		new Notice(
+			`Notion import completed. ${filesToDownload.length} files changed.`
+		);
 	}
 
 	async downloadPage(page: any) {
