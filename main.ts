@@ -18,6 +18,7 @@ interface PluginSettings {
 	importLocation: string;
 	exportLocation: string;
 	allowTags: boolean;
+	importTags: string;
 
 	lastImportedTime: Date;
 	lastExportedTime: Date;
@@ -31,6 +32,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	importLocation: "/",
 	exportLocation: "/",
 	allowTags: false,
+	importTags: "",
 
 	lastImportedTime: new Date(0),
 	lastExportedTime: new Date(0),
@@ -230,6 +232,48 @@ class SettingTab extends PluginSettingTab {
 						this.plugin.settings.allowTags = value;
 						await this.plugin.saveSettings();
 					})
+			);
+
+		new Setting(containerEl)
+			.setName("Imported tags")
+			.setDesc("Add tags to all imported Notion notes.")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.importTags)
+					.onChange(async (value) => {
+						this.plugin.settings.importTags = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Force Import")
+			.setDesc(
+				"Force import all notes in configured Notion database, regardless of last edited time."
+			)
+			.addButton((button) =>
+				button.setButtonText("Import").onClick(async () => {
+					button.setDisabled(true);
+					this.plugin.settings.lastImportedTime = new Date(0);
+					await this.plugin.saveSettings();
+					await this.plugin.downloadAllNotes();
+					button.setDisabled(false);
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Force Export")
+			.setDesc(
+				"Force export all notes in configured Obsidian folder, regardless of last edited time."
+			)
+			.addButton((button) =>
+				button.setButtonText("Export").onClick(async () => {
+					button.setDisabled(true);
+					this.plugin.settings.lastExportedTime = new Date(0);
+					await this.plugin.saveSettings();
+					await this.plugin.uploadAllNotes();
+					button.setDisabled(false);
+				})
 			);
 	}
 }

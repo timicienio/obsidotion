@@ -124,7 +124,7 @@ export class DownloadFromNotion {
 			};
 			const yamlContent = `---\n${stringifyYaml(
 				frontmatter
-			)}\n---\n${markdown}`;
+			)}\n---\n#notion\n${markdown}`;
 
 			if (existingFile && existingFile instanceof TFile) {
 				await this.plugin.app.vault.modify(existingFile, yamlContent);
